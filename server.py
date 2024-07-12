@@ -2,9 +2,10 @@ import os
 import aiohttp
 import asyncio
 import aiopg
+import bcrypt
 from aiohttp import web
 
-BASE_URL = 'http://127.0.0.1:5000'
+BASE_URL = 'http://127.0.0.1:5001'
 DSN = os.getenv('DATABASE_URL', 'dbname=test user=postgres password=secret host=db port=5432')
 
 CREATE_USERS_TABLE = """
@@ -35,11 +36,19 @@ async def close_pg(app):
     app['db'].close()
     await app['db'].wait_closed()
 
+async def hash_password(password):
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return hashed.decode('utf-8')
+
+async def check_password(password, hashed):
+    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+
 async def register_user(request):
     try:
         data = await request.json()
         email = data['email']
-        password = data['password']
+        password = await hash_password(data['password'])
         async with request.app['db'].acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute("INSERT INTO users (email, password) VALUES (%s, %s)", (email, password))
@@ -54,10 +63,10 @@ async def login_user(request):
         password = data['password']
         async with request.app['db'].acquire() as conn:
             async with conn.cursor() as cur:
-                await cur.execute("SELECT * FROM users WHERE email = %s AND password = %s", (email, password))
+                await cur.execute("SELECT password, id FROM users WHERE email = %s", (email,))
                 user = await cur.fetchone()
-                if user:
-                    return web.json_response({'status': 'success', 'id': user[0]})
+                if user and await check_password(password, user[0]):
+                    return web.json_response({'status': 'success', 'id': user[1]})
                 else:
                     return web.json_response({'status': 'fail'}, status=401)
     except Exception as e:
