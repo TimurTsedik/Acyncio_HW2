@@ -1,10 +1,11 @@
 import os
-
+import aiohttp
+import asyncio
 import aiopg
 from aiohttp import web
 
 BASE_URL = 'http://127.0.0.1:5000'
-DSN = os.getenv('DATABASE_URL', 'dbname=test user=postgres password=secret host=127.0.0.1')
+DSN = os.getenv('DATABASE_URL', 'dbname=test user=postgres password=secret host=db port=5432')
 
 CREATE_USERS_TABLE = """
 CREATE TABLE IF NOT EXISTS users (
@@ -71,7 +72,9 @@ async def create_ad_db(request):
         async with request.app['db'].acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute("INSERT INTO ads (title, description, user_id) VALUES (%s, %s, %s)", (title, description, user_id))
-                return web.json_response({'status': 'success'})
+                await cur.execute("SELECT id FROM ads WHERE title = %s AND description = %s AND user_id = %s", (title, description, user_id))
+                ad_id = await cur.fetchone()
+                return web.json_response({'status': 'success', 'ad_id': ad_id[0]})
     except Exception as e:
         return web.json_response({'status': 'error', 'message': str(e)})
 
@@ -132,4 +135,3 @@ app.router.add_post('/logout', logout_user)
 
 if __name__ == '__main__':
     web.run_app(app, host='0.0.0.0', port=5001)
-

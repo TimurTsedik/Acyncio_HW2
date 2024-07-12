@@ -21,10 +21,9 @@ async def create_ad(session, title, description, user_id):
     async with session.post(f'{BASE_URL}/ads', json={'title': title, 'description': description, 'user_id': user_id}) as response:
         return await response.json()
 
-async def get_ad(ad_id):
-    async with aiohttp.ClientSession() as session:
-        async with session.get(f'{BASE_URL}/ads/{ad_id}') as response:
-            return await response.json()
+async def get_ad(session, ad_id):
+    async with session.get(f'{BASE_URL}/ads/{ad_id}') as response:
+        return await response.json()
 
 async def update_ad(session, ad_id, title=None, description=None):
     data = {}
@@ -58,19 +57,22 @@ async def main():
 
         # Create a new ad
         print("Creating a new ad...")
-        print(await create_ad(session, 'My First Ad', 'This is a description of my first ad', user_id))
+        create_response = await create_ad(session, 'My First Ad', 'This is a description of my first ad', user_id)
+        print(create_response)
+
+        ad_id = create_response.get('ad_id')
 
         # Get the ad
         print("Getting the ad...")
-        print(await get_ad(1))
+        print(await get_ad(session, ad_id))
 
         # Update the ad
         print("Updating the ad...")
-        print(await update_ad(session, 1, title='Updated Ad', description='Updated description'))
+        print(await update_ad(session, ad_id, title='Updated Ad', description='Updated description'))
 
         # Delete the ad
         print("Deleting the ad...")
-        print(await delete_ad(session, 1))
+        print(await delete_ad(session, ad_id))
 
         # Logout the user
         print("Logging out the user...")
