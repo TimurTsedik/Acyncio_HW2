@@ -14,7 +14,7 @@ async def login(email, password):
         if response.status == 200:
             return session, await response.json()
         else:
-            await session.close()
+            await session.close(
             return None, await response.json()
 
 async def create_ad(session, title, description, user_id):
