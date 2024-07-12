@@ -1,6 +1,5 @@
 import os
-import aiohttp
-import asyncio
+
 import aiopg
 from aiohttp import web
 
